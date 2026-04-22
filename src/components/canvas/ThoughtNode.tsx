@@ -1,23 +1,12 @@
 'use client';
 
 import { useRef, useState, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, ThreeEvent } from '@react-three/fiber';
 import { useJournalStore, type Sentiment } from '@/store/useJournalStore';
 import { MeshDistortMaterial, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
-// ── Sentiment → Color mapping ──
-const SENTIMENT_COLORS: Record<Sentiment, string> = {
-  Happy: '#4ade80',
-  Sad: '#60a5fa',
-  Anxious: '#f472b6',
-};
-
-const SENTIMENT_EMISSIVE: Record<Sentiment, string> = {
-  Happy: '#22c55e',
-  Sad: '#3b82f6',
-  Anxious: '#ec4899',
-};
+import { SENTIMENT_CONFIG } from '@/lib/sentiments';
 
 interface ThoughtNodeProps {
   id: string;
@@ -54,8 +43,9 @@ export function ThoughtNode({
     return 0.3 + ((clamped - minLen) / (maxLen - minLen)) * 0.7;
   }, [textLength]);
 
-  const color = SENTIMENT_COLORS[sentiment];
-  const emissive = SENTIMENT_EMISSIVE[sentiment];
+  const config = SENTIMENT_CONFIG[sentiment];
+  const color = config.color;
+  const emissive = config.emissive;
 
   useFrame((state) => {
     if (!meshRef.current) return;
@@ -73,7 +63,7 @@ export function ThoughtNode({
   });
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
-    (e as unknown as { stopPropagation: () => void }).stopPropagation();
+    e.stopPropagation();
     selectEntry(id);
     setCameraTarget(position);
   };

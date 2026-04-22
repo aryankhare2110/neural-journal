@@ -16,6 +16,8 @@ export default function CanvasScene() {
         powerPreference: 'high-performance',
       }}
       style={{ background: 'transparent' }}
+      eventSource={typeof window !== 'undefined' ? window.document.body : undefined}
+      eventPrefix="client"
     >
       {/* Lighting */}
       <ambientLight intensity={0.15} />

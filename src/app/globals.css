@@ -128,11 +128,3 @@ a[href*="spline.design"] {
   z-index: 10;
   pointer-events: none;
 }
-
-.ui-overlay > * {
-  pointer-events: auto;
-}
-
-.ui-overlay > .pointer-events-none {
-  pointer-events: none;
-}

@@ -33,9 +33,26 @@ export function CameraRig() {
     scrollTargetZ = Math.max(CAMERA_Z_NEAR, Math.min(CAMERA_Z_FAR, camera.position.z));
 
     const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      if (isNodeSelected.current) return;
+      // Ignore if not in Network_View 3D mode
+      const state = useJournalStore.getState();
+      if (state.viewState !== 'Network_View' || state.viewMode !== '3d' || state.selectedEntryId) return;
 
+      // Ignore if hovering over an element that has overflow-y auto/scroll
+      if (e.target instanceof Element) {
+         let el: Element | null = e.target;
+         while (el && el !== document.body) {
+            if (el.scrollHeight > el.clientHeight) {
+               const style = window.getComputedStyle(el);
+               if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+                  return; // Let the panel scroll natively
+               }
+            }
+            el = el.parentElement;
+         }
+      }
+
+      e.preventDefault();
+      
       // deltaY > 0 = scroll down = dive deeper (Z decreases)
       scrollTargetZ -= e.deltaY * SCROLL_SENSITIVITY;
       scrollTargetZ = Math.max(CAMERA_Z_NEAR, Math.min(CAMERA_Z_FAR, scrollTargetZ));
@@ -45,9 +62,8 @@ export function CameraRig() {
       scrollDepthMV.set(depth);
     };
 
-    const canvas = gl.domElement;
-    canvas.addEventListener('wheel', onWheel, { passive: false });
-    return () => canvas.removeEventListener('wheel', onWheel);
+    window.addEventListener('wheel', onWheel, { passive: false });
+    return () => window.removeEventListener('wheel', onWheel);
   }, [viewState, gl, camera]);
 
   // ── Handle node panel open ─────────────────────────────────────────────────
