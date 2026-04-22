@@ -106,6 +106,7 @@ export function ThoughtNetwork() {
         <ThoughtNode
           key={entry.id}
           id={entry.id}
+          title={entry.title}
           content={entry.content}
           sentiment={entry.sentiment}
           textLength={entry.textLength}

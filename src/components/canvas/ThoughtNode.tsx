@@ -3,7 +3,7 @@
 import { useRef, useState, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useJournalStore, type Sentiment } from '@/store/useJournalStore';
-import { MeshDistortMaterial } from '@react-three/drei';
+import { MeshDistortMaterial, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
 // ── Sentiment → Color mapping ──
@@ -21,6 +21,7 @@ const SENTIMENT_EMISSIVE: Record<Sentiment, string> = {
 
 interface ThoughtNodeProps {
   id: string;
+  title: string;
   content: string;
   sentiment: Sentiment;
   textLength: number;
@@ -30,6 +31,7 @@ interface ThoughtNodeProps {
 
 export function ThoughtNode({
   id,
+  title,
   sentiment,
   textLength,
   position,
@@ -140,6 +142,21 @@ export function ThoughtNode({
           depthWrite={false}
         />
       </mesh>
+
+      {/* Hover Label */}
+      <Html
+        position={[0, radius * 1.5, 0]}
+        center
+        className="pointer-events-none transition-opacity duration-300"
+        style={{ opacity: hovered && !isSelected ? 1 : 0 }}
+      >
+        <div 
+          className="bg-[#050508]/80 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full whitespace-nowrap text-white/90 font-mono tracking-widest uppercase shadow-2xl" 
+          style={{ fontSize: 10 }}
+        >
+          {title}
+        </div>
+      </Html>
     </group>
   );
 }

@@ -6,15 +6,11 @@ import { SENTIMENT_CONFIG, ALL_SENTIMENTS } from '@/lib/sentiments';
 
 function calculateStreak(dates: Date[]): number {
   if (dates.length === 0) return 0;
-  
   const uniqueDateStrings = Array.from(new Set(dates.map(d => d.toDateString()))).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-  
   let streak = 0;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
   let currentCheck = new Date(today);
-  
   if (uniqueDateStrings.includes(currentCheck.toDateString())) {
     streak++;
     currentCheck.setDate(currentCheck.getDate() - 1);
@@ -27,12 +23,10 @@ function calculateStreak(dates: Date[]): number {
       return 0;
     }
   }
-
   while (uniqueDateStrings.includes(currentCheck.toDateString())) {
     streak++;
     currentCheck.setDate(currentCheck.getDate() - 1);
   }
-
   return streak;
 }
 
@@ -42,9 +36,62 @@ function formatRelativeDate(date: Date): string {
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   if (days === 0) return 'Today';
   if (days === 1) return 'Yesterday';
-  if (days < 7) return `${days} days ago`;
+  if (days < 7) return `${days}d ago`;
   if (days < 30) return `${Math.floor(days / 7)}w ago`;
   return `${Math.floor(days / 30)}mo ago`;
+}
+
+/* ─── Donut Chart ─── */
+function DonutChart({ sentimentCounts, totalThoughts }: { sentimentCounts: Record<string, number>; totalThoughts: number }) {
+  const size = 150;
+  const strokeWidth = 20;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const center = size / 2;
+
+  const activeSentiments = ALL_SENTIMENTS.filter(s => (sentimentCounts[s] || 0) > 0);
+  const gapDeg = activeSentiments.length > 1 ? 4 : 0;
+  const totalGapPct = (gapDeg * activeSentiments.length / 360) * 100;
+  const availPct = 100 - totalGapPct;
+
+  const segments: { sentiment: Sentiment; pct: number; color: string; offset: number }[] = [];
+  let cOffset = 0;
+  for (const s of ALL_SENTIMENTS) {
+    const count = sentimentCounts[s] || 0;
+    if (count === 0) continue;
+    const pct = (count / totalThoughts) * availPct;
+    segments.push({ sentiment: s, pct, color: SENTIMENT_CONFIG[s].color, offset: cOffset });
+    cOffset += pct + (gapDeg / 360) * 100;
+  }
+
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
+        <circle cx={center} cy={center} r={radius} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={strokeWidth} />
+        {segments.map((seg, i) => {
+          const dash = (seg.pct / 100) * circumference;
+          const off = -(seg.offset / 100) * circumference;
+          return (
+            <motion.circle
+              key={seg.sentiment}
+              cx={center} cy={center} r={radius}
+              fill="none" stroke={seg.color} strokeWidth={strokeWidth} strokeLinecap="round"
+              strokeDasharray={`${dash} ${circumference - dash}`}
+              strokeDashoffset={off}
+              initial={{ strokeDasharray: `0 ${circumference}` }}
+              animate={{ strokeDasharray: `${dash} ${circumference - dash}` }}
+              transition={{ duration: 0.9, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
+              style={{ filter: `drop-shadow(0 0 5px ${seg.color}50)` }}
+            />
+          );
+        })}
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-xl font-semibold text-white/85 tracking-tight">{totalThoughts}</span>
+        <span className="text-[8px] font-mono uppercase tracking-[0.2em] text-white/30 mt-0.5">entries</span>
+      </div>
+    </div>
+  );
 }
 
 export function LeftPanel() {
@@ -56,12 +103,10 @@ export function LeftPanel() {
   const isVisible = viewState === 'Network_View' && viewMode === '3d' && !selectedEntryId;
 
   const totalThoughts = entries.length;
-  const totalWords = entries.reduce((acc, entry) => acc + entry.content.split(/\s+/).filter(Boolean).length, 0);
-  
+  const totalWords = entries.reduce((acc, e) => acc + e.content.split(/\s+/).filter(Boolean).length, 0);
   const dates = entries.map(e => new Date(e.date));
   const uniqueDays = new Set(dates.map(d => d.toDateString())).size;
   const streak = calculateStreak(dates);
-
   const sorted = [...entries].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const newestEntry = sorted[0] ?? null;
 
@@ -69,6 +114,7 @@ export function LeftPanel() {
     acc[entry.sentiment] = (acc[entry.sentiment] || 0) + 1;
     return acc;
   }, {} as Record<Sentiment, number>);
+
   const metrics = [
     { label: 'Synapses', value: totalThoughts.toString() },
     { label: 'Words', value: totalWords.toString() },
@@ -84,96 +130,90 @@ export function LeftPanel() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="absolute left-8 top-28 bottom-28 z-40 flex w-[360px] flex-col gap-6 pointer-events-auto"
+          className="absolute z-40 flex flex-col gap-4 pointer-events-auto"
+          style={{ left: 24, top: 100, bottom: 96, width: 300 }}
         >
-          <section className="glass-strong flex-shrink-0 rounded-[28px] border border-white/10 p-7 shadow-2xl overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-[50px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/2" />
-            
-            <div className="mb-7 flex items-center justify-between relative z-10">
-              <h3 className="text-xs font-medium uppercase tracking-[0.2em] text-white/50">
+          {/* ─── Metrics Overview ─── */}
+          <section
+            className="glass-strong flex-shrink-0 rounded-2xl shadow-2xl overflow-hidden relative"
+            style={{ padding: '28px 28px 24px 28px' }}
+          >
+            <div className="absolute top-0 right-0 w-28 h-28 bg-white/5 blur-[50px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/2" />
+
+            <div className="flex items-center justify-between relative z-10" style={{ marginBottom: 20 }}>
+              <h3 className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/45">
                 Metrics Overview
               </h3>
               {newestEntry && (
-                <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[10px] font-medium uppercase tracking-widest text-white/50">
+                <span className="rounded-full border border-white/[0.08] bg-black/30 text-[8px] font-mono uppercase tracking-widest text-white/40" style={{ padding: '4px 10px' }}>
                   Last: {formatRelativeDate(newestEntry.date)}
-                </div>
+                </span>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4 relative z-10">
-              {metrics.map((metric) => (
+            <div className="grid grid-cols-2 gap-3 relative z-10">
+              {metrics.map((m) => (
                 <article
-                  key={metric.label}
-                  className="group rounded-2xl border border-white/[0.04] bg-black/20 px-5 py-5 transition-all hover:bg-black/40 hover:border-white/10"
+                  key={m.label}
+                  className="group rounded-xl border border-white/[0.04] bg-black/25 transition-all hover:bg-black/40 hover:border-white/[0.08]"
+                  style={{ padding: '16px 16px' }}
                 >
-                  <div className="mb-4 flex items-center gap-2.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-white/20 group-hover:bg-white/40 transition-colors" />
-                    <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-white/40">
-                      {metric.label}
+                  <div className="flex items-center gap-2" style={{ marginBottom: 10 }}>
+                    <span className="h-1 w-1 rounded-full bg-white/20 group-hover:bg-white/40 transition-colors" />
+                    <span className="text-[9px] font-medium uppercase tracking-[0.15em] text-white/35">
+                      {m.label}
                     </span>
                   </div>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-3xl font-semibold tracking-tight text-white/90">
-                      {metric.value}
-                    </span>
-                    {metric.suffix && (
-                      <span className="text-sm font-medium text-white/40">{metric.suffix}</span>
-                    )}
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-semibold tracking-tight text-white/85">{m.value}</span>
+                    {m.suffix && <span className="text-xs text-white/35">{m.suffix}</span>}
                   </div>
                 </article>
               ))}
             </div>
           </section>
 
-          <section className="glass-strong flex min-h-0 flex-1 flex-col rounded-[28px] border border-white/10 p-7 shadow-2xl relative overflow-hidden">
-            <div className="absolute bottom-0 left-0 w-40 h-40 bg-white/5 blur-[60px] rounded-full pointer-events-none translate-y-1/2 -translate-x-1/2" />
-            
-            <div className="mb-7 flex items-center justify-between relative z-10">
-              <h3 className="text-xs font-medium uppercase tracking-[0.2em] text-white/50">
+          {/* ─── Mood Patterns (Donut) ─── */}
+          <section
+            className="glass-strong flex min-h-0 flex-1 flex-col rounded-2xl shadow-2xl relative overflow-hidden"
+            style={{ padding: '24px 28px' }}
+          >
+            <div className="absolute bottom-0 left-0 w-36 h-36 bg-white/5 blur-[60px] rounded-full pointer-events-none translate-y-1/2 -translate-x-1/2" />
+
+            <div className="flex items-center justify-between relative z-10" style={{ marginBottom: 16 }}>
+              <h3 className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/45">
                 Mood Patterns
               </h3>
-              <span className="text-[10px] font-medium uppercase tracking-widest text-white/30">
+              <span className="text-[9px] font-mono uppercase tracking-widest text-white/25">
                 Distribution
               </span>
             </div>
 
-            <div className="flex-1 space-y-5 overflow-y-auto pr-2 relative z-10">
-              {ALL_SENTIMENTS.map((sentiment) => {
-                const count = sentimentCounts[sentiment] || 0;
-                const percentage = totalThoughts > 0 ? (count / totalThoughts) * 100 : 0;
-                const config = SENTIMENT_CONFIG[sentiment];
+            <div className="flex-1 flex flex-col items-center justify-center relative z-10 overflow-y-auto">
+              <div style={{ marginBottom: 16 }}>
+                <DonutChart sentimentCounts={sentimentCounts} totalThoughts={totalThoughts} />
+              </div>
 
-                return (
-                  <div key={sentiment} className="space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div 
-                          className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: config.color, boxShadow: `0 0 8px ${config.color}60` }}
-                        />
-                        <span className="text-[13px] font-medium tracking-wide text-white/70">
-                          {sentiment}
-                        </span>
-                      </div>
-                      <span className="text-[11px] font-mono text-white/40">
-                        {count} <span className="opacity-50">({percentage.toFixed(0)}%)</span>
+              <div className="grid grid-cols-2 gap-x-5 gap-y-2 w-full">
+                {ALL_SENTIMENTS.map((s) => {
+                  const count = sentimentCounts[s] || 0;
+                  const pct = totalThoughts > 0 ? (count / totalThoughts) * 100 : 0;
+                  return (
+                    <div key={s} className="flex items-center gap-2">
+                      <div
+                        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: SENTIMENT_CONFIG[s].color, boxShadow: `0 0 5px ${SENTIMENT_CONFIG[s].color}40` }}
+                      />
+                      <span className="text-[10px] font-medium tracking-wide text-white/55 truncate flex-1">
+                        {s}
+                      </span>
+                      <span className="text-[9px] font-mono text-white/30 flex-shrink-0">
+                        {pct.toFixed(0)}%
                       </span>
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-black/40 border border-white/[0.02]">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${percentage}%` }}
-                        transition={{ duration: 0.85, ease: 'easeOut' }}
-                        className="h-full rounded-full"
-                        style={{
-                          backgroundColor: config.color,
-                          boxShadow: `0 0 10px ${config.color}80`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </section>
         </motion.div>

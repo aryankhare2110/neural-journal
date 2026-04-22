@@ -45,12 +45,12 @@ export function NetworkOverlay() {
           style={{ top: 86, zIndex: 25 }}
         >
           {/* ─── Bottom Left: Status ─── */}
-          <div className="absolute bottom-20 left-8 flex flex-col gap-2">
+          <div className="absolute bottom-16 left-6 flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <span className="w-[6px] h-[6px] rounded-full bg-emerald-400/60 animate-pulse" />
+              <span className="w-[5px] h-[5px] rounded-full bg-emerald-400/60 animate-pulse" />
               <span
-                className="font-mono uppercase text-white/40"
-                style={{ fontSize: 10, letterSpacing: '0.15em' }}
+                className="font-mono uppercase text-white/35"
+                style={{ fontSize: 9, letterSpacing: '0.15em' }}
               >
                 System Active
               </span>
@@ -58,16 +58,16 @@ export function NetworkOverlay() {
           </div>
 
           {/* ─── Bottom Right: Instructions ─── */}
-          <div className="absolute bottom-20 right-8 flex flex-col items-end gap-2 text-right max-w-[220px]">
+          <div className="absolute bottom-16 right-6 flex flex-col items-end gap-1.5 text-right max-w-[200px]">
             <span
-              className="font-mono uppercase text-white/15"
-              style={{ fontSize: 8, letterSpacing: '0.2em' }}
+              className="font-mono uppercase text-white/12"
+              style={{ fontSize: 7, letterSpacing: '0.2em' }}
             >
               ////// Interact
             </span>
             <p
-              className="font-mono uppercase text-white/25 leading-relaxed"
-              style={{ fontSize: 9, letterSpacing: '0.12em' }}
+              className="font-mono uppercase text-white/20 leading-relaxed"
+              style={{ fontSize: 8, letterSpacing: '0.1em' }}
             >
               Click a node to view. Scroll to travel through time.
             </p>

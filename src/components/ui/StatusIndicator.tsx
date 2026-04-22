@@ -17,10 +17,10 @@ export function StatusIndicator() {
           exit={{ opacity: 0, x: -10 }}
           transition={{ duration: 0.6, ease: 'easeOut' }}
           // Moved to bottom-left but high enough to sit clearly above the Next.js dev badge
-          className="absolute bottom-24 left-8 flex items-center gap-2.5 pointer-events-none"
+          className="absolute bottom-20 left-6 flex items-center gap-2 pointer-events-none"
         >
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/70 animate-pulse" />
-          <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-white/40">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/60 animate-pulse" />
+          <span className="font-mono text-[9px] tracking-[0.15em] uppercase text-white/35">
             {entries.length} Synapses Active
           </span>
         </motion.div>

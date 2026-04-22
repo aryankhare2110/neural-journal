@@ -34,6 +34,8 @@ interface JournalState {
   tags: string[];
   addTag: (tag: string) => void;
   removeTag: (tag: string) => void;
+  renameTag: (oldName: string, newName: string) => void;
+  reorderTags: (tags: string[]) => void;
 
   entries: JournalEntry[];
   addEntry: (entry: JournalEntry) => void;
@@ -180,7 +182,25 @@ export const useJournalStore = create<JournalState>((set) => ({
   })),
   removeTag: (tag) => set((state) => ({
     tags: state.tags.filter((t) => t !== tag),
+    entries: state.entries.map((e) => ({
+      ...e,
+      tags: e.tags.filter((t) => t !== tag),
+    })),
+    tagFilter: state.tagFilter === tag ? null : state.tagFilter,
   })),
+  renameTag: (oldName, newName) => set((state) => {
+    const trimmed = newName.trim().toLowerCase();
+    if (!trimmed || state.tags.includes(trimmed)) return state;
+    return {
+      tags: state.tags.map((t) => (t === oldName ? trimmed : t)),
+      entries: state.entries.map((e) => ({
+        ...e,
+        tags: e.tags.map((t) => (t === oldName ? trimmed : t)),
+      })),
+      tagFilter: state.tagFilter === oldName ? trimmed : state.tagFilter,
+    };
+  }),
+  reorderTags: (tags) => set({ tags }),
 
   entries: DUMMY_ENTRIES,
   addEntry: (entry) => set((state) => ({ entries: [entry, ...state.entries] })),
