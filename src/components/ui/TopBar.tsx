@@ -228,6 +228,24 @@ export function TopBar() {
                   </button>
                 );
               })}
+              
+              <div className="w-px h-4 bg-white/10 mx-2" />
+              
+              <button
+                onClick={async () => {
+                  const { createClient } = await import('@/utils/supabase/client');
+                  const supabase = createClient();
+                  await supabase.auth.signOut();
+                  useJournalStore.getState().setUser(null);
+                  useJournalStore.getState().setViewState('Landing');
+                }}
+                className="text-white/30 hover:text-red-400 transition-colors flex items-center gap-1.5 ml-1"
+                title="Log Out"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+                </svg>
+              </button>
             </div>
           </div>
 

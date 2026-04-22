@@ -35,12 +35,12 @@ export function ThoughtNode({
 
   const isSelected = selectedEntryId === id;
 
-  // Map textLength to radius (0.3 – 1.0)
+  // Map textLength to radius (0.8 – 2.0)
   const radius = useMemo(() => {
     const minLen = 30;
     const maxLen = 200;
     const clamped = Math.max(minLen, Math.min(maxLen, textLength));
-    return 0.3 + ((clamped - minLen) / (maxLen - minLen)) * 0.7;
+    return 0.8 + ((clamped - minLen) / (maxLen - minLen)) * 1.2;
   }, [textLength]);
 
   const config = SENTIMENT_CONFIG[sentiment];

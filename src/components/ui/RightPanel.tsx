@@ -3,6 +3,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useJournalStore } from '@/store/useJournalStore';
 import { SENTIMENT_CONFIG } from '@/lib/sentiments';
+import { useEffect, useState, useMemo } from 'react';
+import { generateIntelligenceInsight } from '@/app/actions';
 
 export function RightPanel() {
   const viewState = useJournalStore((s) => s.viewState);
@@ -13,25 +15,45 @@ export function RightPanel() {
 
   const isVisible = viewState === 'Network_View' && viewMode === '3d' && !selectedEntryId;
 
-  const recentEntries = [...entries]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 10);
+  const recentEntries = useMemo(() => {
+    return [...entries]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 10);
+  }, [entries]);
 
-  const recentSentiments = recentEntries.map(e => e.sentiment);
-  let analysisText = "You've been navigating various states of mind recently. Keep mapping your thoughts to uncover deeper patterns.";
-  
-  if (recentSentiments.length > 0) {
-    const mostFrequent = recentSentiments.sort((a,b) =>
-      recentSentiments.filter(v => v===a).length
-      - recentSentiments.filter(v => v===b).length
-    ).pop();
+  const [analysisText, setAnalysisText] = useState("Analyzing your recent mental patterns...");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  useEffect(() => {
+    if (!isVisible || recentEntries.length === 0) return;
     
-    if (mostFrequent === 'Anxious' || mostFrequent === 'Sad' || mostFrequent === 'Frustrated') {
-      analysisText = `Noticeable ${mostFrequent.toLowerCase()} patterns recently. Consider taking a moment for yourself or exploring these thoughts deeper.`;
-    } else if (mostFrequent === 'Happy' || mostFrequent === 'Calm') {
-      analysisText = `Your recent thoughts reflect a ${mostFrequent.toLowerCase()} state. Great job maintaining this positive balance.`;
-    }
-  }
+    let isMounted = true;
+    setIsAnalyzing(true);
+
+    const mappedEntries = recentEntries.map(e => ({
+      title: e.title,
+      content: e.content,
+      sentiment: e.sentiment,
+      date: new Date(e.date).toISOString()
+    }));
+
+    generateIntelligenceInsight(mappedEntries)
+      .then(insight => {
+        if (isMounted) {
+          setAnalysisText(insight);
+          setIsAnalyzing(false);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        if (isMounted) {
+          setAnalysisText("We couldn't generate an insight at this moment. Keep mapping your thoughts.");
+          setIsAnalyzing(false);
+        }
+      });
+
+    return () => { isMounted = false; };
+  }, [isVisible, recentEntries]);
 
   return (
     <AnimatePresence>
@@ -61,7 +83,7 @@ export function RightPanel() {
               className="rounded-xl border border-white/[0.04] bg-black/25 relative z-10"
               style={{ padding: '16px 18px' }}
             >
-              <p className="text-[13px] font-light leading-[1.7] text-white/70">
+              <p className={`text-[13px] font-light leading-[1.7] text-white/70 transition-opacity duration-300 ${isAnalyzing ? 'opacity-50 animate-pulse' : 'opacity-100'}`}>
                 {analysisText}
               </p>
             </div>

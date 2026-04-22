@@ -1,8 +1,10 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { useEffect } from 'react';
 import { useJournalStore } from '@/store/useJournalStore';
 import { AnimatePresence, motion } from 'framer-motion';
+import { createClient } from '@/utils/supabase/client';
 
 import { HeroOverlay } from '@/components/ui/HeroOverlay';
 import { ThoughtInput } from '@/components/ui/ThoughtInput';
@@ -26,6 +28,21 @@ const CanvasScene = dynamic(
 
 export default function Page() {
   const viewState = useJournalStore((s) => s.viewState);
+  const setUser = useJournalStore((s) => s.setUser);
+  const fetchEntries = useJournalStore((s) => s.fetchEntries);
+  
+  useEffect(() => {
+    const initSession = async () => {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.user) {
+        setUser(data.session.user);
+        await fetchEntries();
+      }
+    };
+    initSession();
+  }, [setUser, fetchEntries]);
+
   const showCanvas = viewState === 'Transitioning' || viewState === 'Network_View';
 
   return (

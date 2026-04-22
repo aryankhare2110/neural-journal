@@ -17,7 +17,12 @@ export interface JournalEntry {
   tags: string[];
 }
 
+import type { User } from '@supabase/supabase-js';
+
 interface JournalState {
+  user: User | null;
+  setUser: (user: User | null) => void;
+
   viewState: ViewState;
   setViewState: (state: ViewState) => void;
 
@@ -38,6 +43,8 @@ interface JournalState {
   reorderTags: (tags: string[]) => void;
 
   entries: JournalEntry[];
+  setEntries: (entries: JournalEntry[]) => void;
+  fetchEntries: () => Promise<void>;
   addEntry: (entry: JournalEntry) => void;
   updateEntryTags: (id: string, tags: string[]) => void;
 
@@ -48,122 +55,13 @@ interface JournalState {
   setCameraTarget: (target: [number, number, number] | null) => void;
 }
 
-// ---------- Dummy data ----------
-const INITIAL_TAGS = ['work', 'personal', 'health', 'creativity', 'reflection'];
-
-const DUMMY_ENTRIES: JournalEntry[] = [
-  {
-    id: 'entry-1',
-    title: 'Project Complete',
-    content: 'Today was incredible. I finally finished the project I have been working on for months. The feeling of completion is unlike anything else — pure satisfaction.',
-    sentiment: 'Happy',
-    textLength: 156,
-    date: new Date('2026-04-06'),
-    tags: ['work', 'creativity'],
-  },
-  {
-    id: 'entry-2',
-    title: 'Overwhelmed',
-    content: 'Feeling a bit overwhelmed with everything on my plate. Deadlines are piling up and I am not sure I can keep up with all of it. Need to take things one step at a time.',
-    sentiment: 'Anxious',
-    textLength: 168,
-    date: new Date('2026-04-04'),
-    tags: ['work'],
-  },
-  {
-    id: 'entry-3',
-    title: 'Missing Home',
-    content: 'Missing home. It has been too long since I visited.',
-    sentiment: 'Sad',
-    textLength: 52,
-    date: new Date('2026-04-01'),
-    tags: ['personal'],
-  },
-  {
-    id: 'entry-4',
-    title: 'Simple Joys',
-    content: 'Had the best coffee this morning and spent the afternoon reading in the park. Sometimes the simple things are the most fulfilling. Grateful for days like these.',
-    sentiment: 'Calm',
-    textLength: 162,
-    date: new Date('2026-03-28'),
-    tags: ['personal', 'health'],
-  },
-  {
-    id: 'entry-5',
-    title: 'Presentation Anxiety',
-    content: 'Presentation tomorrow and I am spiraling. What if I forget everything? What if they ask questions I cannot answer? I have prepared but it never feels like enough.',
-    sentiment: 'Anxious',
-    textLength: 164,
-    date: new Date('2026-03-22'),
-    tags: ['work'],
-  },
-  {
-    id: 'entry-6',
-    title: 'Lost Journal',
-    content: 'Lost my old journal today. Years of memories just gone. I know they are still in my mind but something about having them written down made them feel more real.',
-    sentiment: 'Sad',
-    textLength: 159,
-    date: new Date('2026-03-15'),
-    tags: ['personal', 'reflection'],
-  },
-  {
-    id: 'entry-7',
-    title: 'Breakthrough',
-    content: 'Breakthrough moment at work today. The algorithm finally converged and the results are beautiful. All those late nights were worth it. This is why I do what I do.',
-    sentiment: 'Happy',
-    textLength: 163,
-    date: new Date('2026-03-08'),
-    tags: ['work', 'creativity'],
-  },
-  {
-    id: 'entry-8',
-    title: 'Sleepless Night',
-    content: 'Cannot sleep again. Mind racing with thoughts about the future. Where will I be in five years? Ten? The uncertainty is both terrifying and exciting at the same time.',
-    sentiment: 'Frustrated',
-    textLength: 166,
-    date: new Date('2026-02-28'),
-    tags: ['reflection', 'health'],
-  },
-  {
-    id: 'entry-9',
-    title: 'Morning Meditation',
-    content: 'Started the day with a 20-minute meditation. The silence was exactly what I needed. My mind feels clear and ready for whatever comes next.',
-    sentiment: 'Calm',
-    textLength: 140,
-    date: new Date('2026-02-20'),
-    tags: ['health', 'personal'],
-  },
-  {
-    id: 'entry-10',
-    title: 'Just Another Day',
-    content: 'Nothing remarkable happened today. Went through the motions — work, lunch, errands. Sometimes normal is perfectly fine.',
-    sentiment: 'Neutral',
-    textLength: 118,
-    date: new Date('2026-02-15'),
-    tags: ['reflection'],
-  },
-  {
-    id: 'entry-11',
-    title: 'Traffic Rage',
-    content: 'Spent two hours stuck in traffic today. The construction has been going on for months with no end in sight. Complete waste of time and energy.',
-    sentiment: 'Frustrated',
-    textLength: 143,
-    date: new Date('2026-02-10'),
-    tags: ['personal'],
-  },
-  {
-    id: 'entry-12',
-    title: 'Weekend Plans',
-    content: 'Looking forward to the weekend. No plans, no obligations. Just going to let things unfold naturally and see where the day takes me.',
-    sentiment: 'Neutral',
-    textLength: 132,
-    date: new Date('2026-02-05'),
-    tags: ['personal'],
-  },
-];
+import { createClient } from '@/utils/supabase/client';
 
 // ---------- Store ----------
 export const useJournalStore = create<JournalState>((set) => ({
+  user: null,
+  setUser: (user) => set({ user }),
+
   viewState: 'Landing',
   setViewState: (viewState) => set({ viewState }),
 
@@ -176,7 +74,7 @@ export const useJournalStore = create<JournalState>((set) => ({
   tagFilter: null,
   setTagFilter: (tagFilter) => set({ tagFilter }),
 
-  tags: INITIAL_TAGS,
+  tags: [],
   addTag: (tag) => set((state) => ({
     tags: state.tags.includes(tag) ? state.tags : [...state.tags, tag],
   })),
@@ -202,8 +100,48 @@ export const useJournalStore = create<JournalState>((set) => ({
   }),
   reorderTags: (tags) => set({ tags }),
 
-  entries: DUMMY_ENTRIES,
-  addEntry: (entry) => set((state) => ({ entries: [entry, ...state.entries] })),
+  entries: [],
+  setEntries: (entries) => set({ entries }),
+  fetchEntries: async () => {
+    const supabase = createClient();
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData?.user) return;
+    
+    const { data, error } = await supabase
+      .from('entries')
+      .select('*')
+      .eq('user_id', userData.user.id)
+      .order('date', { ascending: false });
+      
+    if (!error && data) {
+      const parsedEntries = data.map((e: any) => ({
+        id: e.id,
+        title: e.title,
+        content: e.content,
+        sentiment: e.sentiment,
+        intensity: e.intensity,
+        textLength: e.text_length,
+        date: new Date(e.date),
+        tags: e.tags || [],
+      }));
+      set({ entries: parsedEntries as JournalEntry[] });
+      
+      // Update tags based on fetched entries
+      const allTags = new Set<string>();
+      data.forEach(entry => {
+        entry.tags?.forEach((t: string) => allTags.add(t));
+      });
+      set({ tags: Array.from(allTags) });
+    }
+  },
+  addEntry: (entry) => set((state) => {
+    // Add new tags to global pool
+    const newTags = new Set([...state.tags, ...entry.tags]);
+    return { 
+      entries: [entry, ...state.entries],
+      tags: Array.from(newTags)
+    };
+  }),
   updateEntryTags: (id, tags) => set((state) => ({
     entries: state.entries.map((e) => e.id === id ? { ...e, tags } : e),
   })),

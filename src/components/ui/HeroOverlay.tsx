@@ -3,12 +3,18 @@
 import { motion, AnimatePresence, useSpring, useTransform } from 'framer-motion';
 import { useJournalStore } from '@/store/useJournalStore';
 import { landingScrollProgress } from '@/lib/scrollProgress';
+import { useState } from 'react';
+import { AuthModal } from '@/components/ui/AuthModal';
 
 const SPRING_CONFIG = { damping: 40, stiffness: 300, mass: 0.5 };
 
 export function HeroOverlay() {
   const viewState = useJournalStore((s) => s.viewState);
   const isVisible = viewState === 'Landing';
+  const user = useJournalStore((s) => s.user);
+
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
   const smoothProgress = useSpring(landingScrollProgress, SPRING_CONFIG);
 
@@ -16,6 +22,7 @@ export function HeroOverlay() {
   const globalOpacity = useTransform(smoothProgress, [0, 0.3], [1, 0]);
 
   return (
+    <>
     <AnimatePresence>
       {isVisible && (
         <motion.div
@@ -41,12 +48,27 @@ export function HeroOverlay() {
 
             {/* ─── Top Right: Auth ─── */}
             <div className="absolute top-8 right-8 md:top-12 md:right-12 flex items-center gap-6 font-mono text-[10px] md:text-xs tracking-widest uppercase pointer-events-auto">
-              <button className="text-white/50 hover:text-white transition-colors cursor-pointer">
-                Log In
-              </button>
-              <button className="text-white hover:text-violet-300 transition-colors cursor-pointer">
-                Sign Up
-              </button>
+              {!user ? (
+                <>
+                  <button 
+                    onClick={() => { setAuthMode('login'); setAuthModalOpen(true); }}
+                    className="text-white/50 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Log In
+                  </button>
+                  <button 
+                    onClick={() => { setAuthMode('signup'); setAuthModalOpen(true); }}
+                    className="text-white hover:text-violet-300 transition-colors cursor-pointer"
+                  >
+                    Sign Up
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center gap-2 text-white/50">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Connected
+                </div>
+              )}
             </div>
 
             {/* ─── Bottom Left: Interaction Hint ─── */}
@@ -81,5 +103,13 @@ export function HeroOverlay() {
         </motion.div>
       )}
     </AnimatePresence>
+    
+    {/* Auth Modal rendered outside the scaling container so it stays fixed */}
+    <AuthModal 
+      isOpen={authModalOpen} 
+      onClose={() => setAuthModalOpen(false)} 
+      defaultMode={authMode} 
+    />
+    </>
   );
 }

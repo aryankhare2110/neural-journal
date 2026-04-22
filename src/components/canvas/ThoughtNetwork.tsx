@@ -40,21 +40,35 @@ export function ThoughtNetwork() {
     const dates = visibleEntries.map((e) => new Date(e.date).getTime());
     const newestDate = Math.max(...dates);
     const oldestDate = Math.min(...dates);
-    const dateRange = newestDate - oldestDate || 1;
+    
+    // Enforce a minimum timeline range of 30 days so entries created seconds apart aren't stretched across the entire Z-axis
+    const MIN_RANGE_MS = 30 * 24 * 60 * 60 * 1000;
+    const dateRange = Math.max(newestDate - oldestDate, MIN_RANGE_MS);
 
     const computedNodes = visibleEntries.map((entry) => {
-      const hash = hashString(entry.id);
-      const rand1 = seededRandom(hash);
-      const rand2 = seededRandom(hash + 1);
+      // 1. Calculate cluster center based on the day
+      const entryDate = new Date(entry.date);
+      const dayString = entryDate.toISOString().split('T')[0];
+      const dayHash = hashString(dayString);
+      const dayRand1 = seededRandom(dayHash);
+      const dayRand2 = seededRandom(dayHash + 1);
+      
+      const baseX = (dayRand1 - 0.5) * 8;
+      const baseY = (dayRand2 - 0.5) * 6;
 
-      // X: spread horizontally (-8 to 8)
-      const x = (rand1 - 0.5) * 16;
-      // Y: spread vertically (-4 to 6)
-      const y = (rand2 - 0.5) * 10;
+      // 2. Add a micro-jitter based on the individual thought so they don't overlap
+      const idHash = hashString(entry.id);
+      const jitterX = (seededRandom(idHash) - 0.5) * 6;
+      const jitterY = (seededRandom(idHash + 1) - 0.5) * 6;
+      const jitterZ = (seededRandom(idHash + 2) - 0.5) * 5;
+
+      const x = baseX + jitterX;
+      const y = baseY + jitterY;
+      
       // Z: time-based. Newest = 0, oldest = -80
       const dateMs = new Date(entry.date).getTime();
       const normalizedAge = (newestDate - dateMs) / dateRange;
-      const z = -normalizedAge * 80;
+      const z = (-normalizedAge * 80) + jitterZ;
 
       const opacity = Math.max(0.2, 1 - normalizedAge * 0.6);
 
@@ -88,7 +102,7 @@ export function ThoughtNetwork() {
   }, [visibleEntries]);
 
   return (
-    <group>
+    <group position={[-3, 0, 0]}>
       {/* Render synaptic network lines first so they sit behind nodes */}
       {edgeData.map((edge, i) => (
         <Line
